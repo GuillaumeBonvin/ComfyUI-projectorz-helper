@@ -1,10 +1,3 @@
+from .nodes import NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS
 
-from nodes import calculator
-
-NODE_CLASS_MAPPINGS = {
-    "CalculatorNode": calculator.CalculatorNode
-}
-
-NODE_DISPLAY_NAME_MAPPINGS = {
-    "CalculatorNode": "Basic Calculator"
-}
+__all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
