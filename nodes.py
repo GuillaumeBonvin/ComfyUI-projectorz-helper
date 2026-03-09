@@ -1,3 +1,4 @@
+import logging
 from .image_methods import ImageChecker, ImageType
 
 class ImageCheckTypeNode:
@@ -18,7 +19,10 @@ class ImageCheckTypeNode:
     CATEGORY = "ProjectorzHelp"
 
     def check_type(self, image):
-        return (ImageChecker.check_type(image).value,)
+        foundtype, conf = ImageChecker.check_type(image)
+        logging.info(f"{foundtype.value} detected with {conf*100:.2f}% confidence.")
+
+        return (foundtype.value,)
 
 
 class ControlNetModelSelectorNode:
