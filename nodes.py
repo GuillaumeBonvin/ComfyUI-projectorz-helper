@@ -14,7 +14,7 @@ class ImageCheckTypeNode:
         }
 
     RETURN_TYPES = ("STRING",)
-    RETURN_NAMES = ("type",)
+    RETURN_NAMES = ("image_type",)
     FUNCTION = "check_type"
     CATEGORY = "ProjectorzHelp"
 
@@ -30,44 +30,109 @@ class ControlNetModelSelectorNode:
     Node to select the correct ControlNet model based on image type (NormalMap or DepthMap).
     """
 
+    _NOT_LINKED = "unassigned"
+    """
+    Allows to differentiate between not yet loaded lazy arguments (None) and 
+    actual empty inputs (no node linked)
+    """
+
+    def __init__(self):
+        self._cached_type = None
+
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "depth_model": ("CONTROL_NET", {}),
-                "normal_model": ("CONTROL_NET", {}),
                 "fallback_model": ("CONTROL_NET", {}),
-                "image": ("IMAGE", {})
             },
-            "optional": {}
+            "optional": {
+                "image": ("IMAGE", {}),
+                "image_type": ("STRING", {"default": ""}),
+                "depth_model": ("CONTROL_NET", {"lazy": True}),
+                "normal_model": ("CONTROL_NET", {"lazy": True}),
+            }
         }
 
-    RETURN_TYPES = ("CONTROL_NET",)
-    RETURN_NAMES = ("model",)
+    RETURN_TYPES = ("CONTROL_NET", "STRING")
+    RETURN_NAMES = ("model", "image_type")
     FUNCTION = "select_model"
     CATEGORY = "ProjectorzHelp"
 
-    def select_model(self, depth_model, normal_model, fallback_model, image):
-        if image is not None:
-            img_type = ImageChecker.check_type(image)
+    def _get_cached_type_or_evaluate(self, image, image_type):
+        """
+        Checks if the type is already cached. If so, return it.
+        Otherwise, evaluates the given image_type or image using ImageChecker and caches the result.
+        Returns None if no valid input is provided or if evaluation fails (cache remains cleared/None).
+        """
+        if self._cached_type is not None:
+            return self._cached_type
 
-            # Check specifically for NormalMap to return the normal model
-            if img_type == ImageType.depthMap:
-                return (depth_model,)
-            if img_type == ImageType.normalMap:
-                return (normal_model,)
-            else:
-                # Default fallback or DepthMap detection, return depth model
-                return (fallback_model,)
-        else:
-            # Fallback behavior if no image provided
-            return (fallback_model,)
+        # string detection
+        if image_type:
+            # If user explicitly passed a type string (e.g. "depthMap"), use it.
+            # Validate against allowed types to avoid errors with invalid strings
+            if image_type in [v.value for v in ImageType]:
+                self._cached_type = image_type
+                return  image_type
+
+        # image analysis
+        if image is not None:
+            try:
+                found_type, confidence = ImageChecker.check_type(image)
+                type_value = found_type.value
+                self._cached_type = type_value
+                return type_value
+            except Exception:
+                return None
+
+        return None
+
+    def check_lazy_status(self, fallback_model, image=None, image_type="", depth_model=_NOT_LINKED, normal_model=_NOT_LINKED):
+        """
+        Checks which models actually need loading based on the image type detection result.
+        Evaluates and caches the result if not already cached.
+        """
+
+        needed_models = []
+        detected_type = self._get_cached_type_or_evaluate(image, image_type)
+
+        # Determine which models are actually selected/needed
+        if depth_model != self._NOT_LINKED and detected_type == ImageType.depthMap.value:
+            needed_models.append("depth_model")
+        if normal_model != self._NOT_LINKED and detected_type == ImageType.normalMap.value:
+            needed_models.append("normal_model")
+
+        return needed_models
+
+    def select_model(self, fallback_model, image=None, image_type="", depth_model=None, normal_model=None):
+        """
+        Selects the appropriate model for the given image or provided type.
+        Evaluates and caches the result if not already cached.
+        :return: Tuple containing the selected model and the image type.
+        """
+        selected_model = fallback_model
+        selected_type = self._get_cached_type_or_evaluate(image, image_type)
+
+        # Logic to select model based on the resolved type
+        # Map known types to specific models, else fallback
+        if depth_model and selected_type == ImageType.depthMap.value:
+            selected_model = depth_model
+        elif normal_model and selected_type == ImageType.normalMap.value:
+            selected_model = normal_model
+
+        #clear cache for next run
+        self._cached_type = None
+
+
+        if selected_type is None:
+            selected_type = ImageType.default.value
+
+        return (selected_model, selected_type)
 
 
 NODE_CLASS_MAPPINGS = {
     "ImageTypeCheck": ImageCheckTypeNode,
     "ControlNetModelSelector": ControlNetModelSelectorNode,
-
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
