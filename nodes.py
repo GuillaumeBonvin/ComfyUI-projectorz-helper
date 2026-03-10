@@ -50,6 +50,7 @@ class ControlNetModelSelectorNode:
                 "image_type": ("STRING", {"default": ""}),
                 "depth_model": ("CONTROL_NET", {"lazy": True}),
                 "normal_model": ("CONTROL_NET", {"lazy": True}),
+                "openpose_model": ("CONTROL_NET", {"lazy": True}),
             }
         }
 
@@ -87,7 +88,10 @@ class ControlNetModelSelectorNode:
 
         return None
 
-    def check_lazy_status(self, fallback_model, image=None, image_type="", depth_model=_NOT_LINKED, normal_model=_NOT_LINKED):
+    def check_lazy_status(self, fallback_model, image=None, image_type="",
+                          depth_model=_NOT_LINKED,
+                          normal_model=_NOT_LINKED,
+                          openpose_model=_NOT_LINKED):
         """
         Checks which models actually need loading based on the image type detection result.
         Evaluates and caches the result if not already cached.
@@ -101,10 +105,15 @@ class ControlNetModelSelectorNode:
             needed_models.append("depth_model")
         if normal_model != self._NOT_LINKED and detected_type == ImageType.normalMap.value:
             needed_models.append("normal_model")
+        if openpose_model != self._NOT_LINKED and detected_type == ImageType.openPose.value:
+            needed_models.append("openpose_model")
 
         return needed_models
 
-    def select_model(self, fallback_model, image=None, image_type="", depth_model=None, normal_model=None):
+    def select_model(self, fallback_model, image=None, image_type="",
+                     depth_model=None,
+                     normal_model=None,
+                     openpose_model=None):
         """
         Selects the appropriate model for the given image or provided type.
         Evaluates and caches the result if not already cached.
@@ -118,6 +127,8 @@ class ControlNetModelSelectorNode:
         if depth_model and selected_type == ImageType.depthMap.value:
             selected_model = depth_model
         elif normal_model and selected_type == ImageType.normalMap.value:
+            selected_model = normal_model
+        elif openpose_model and selected_type == ImageType.openPose.value:
             selected_model = normal_model
 
         #clear cache for next run
