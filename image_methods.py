@@ -1,4 +1,5 @@
 import logging
+
 import torch
 from enum import Enum
 
@@ -103,22 +104,31 @@ class ImageChecker:
         # 4. Check for Normal Map (Typical blueish/purple tint and unit vector)
         # Calculate the mean RGB value across the entire image spatial dimensions
 
-            # blue dominance
+        # blue dominance
+        blue_test_goal = 0.9
+
         r = pixels[:, 0].float() / 255.0
         g = pixels[:, 1].float() / 255.0
         b = pixels[:, 2].float() / 255.0
 
-        blue_ok = (b > 0.5).float().mean() > 0.7
+        blue_score = (b > 0.5).float().mean()
+        blue_ok = blue_score > blue_test_goal
+        blue_confidence = min(1.0, max(0.0, (blue_score - blue_test_goal) / (1 - blue_score)))
 
-            # unit vector length
+        # unit vector length
+        unit_test_goal = 0.7
+
         nx = 2 * r - 1
         ny = 2 * g - 1
         nz = 2 * b - 1
         length = torch.sqrt(nx * nx + ny * ny + nz * nz)
 
-        unit_ok = ((length > 0.85) & (length < 1.15)).float().mean() > 0.8
+        unit_score = ((length > 0.95) & (length < 1.05)).float().mean()
+        unit_ok = unit_score > unit_test_goal
+        unit_confidence = min(1.0, max(0.0, (unit_score - unit_test_goal) / (1 - unit_score)))
 
         if blue_ok and unit_ok:
+            confidence = (blue_confidence + unit_confidence) / 2
             return ImageType.normalMap, confidence
 
         # 5. Check for OpenPose / Keypoint Map (Distinct colored joints)
