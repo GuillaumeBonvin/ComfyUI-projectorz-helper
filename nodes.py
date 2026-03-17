@@ -25,6 +25,46 @@ class ImageCheckTypeNode:
         return (foundtype.value,)
 
 
+class ValidateTypeNode:
+    """
+    Validates an image type string against a target value using an operator.
+    """
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        try:
+            options = [item.value for item in ImageType]
+        except Exception:
+            # Fallback if ImageType is not imported correctly
+            options = ["SolidColor", "Mask", "DepthMap", "NormalMap", "OpenPose", "RegularImage", "Unknown"]
+
+        return {
+            "required": {
+                "image_type": ("STRING", {"multiline": False, "default": ""}),
+                "operator": (["is", "is not"], {"default": "is"}),
+                "target_type": (options, {"default": options[0] if options else "SolidColor"}),
+            }
+        }
+
+
+    RETURN_TYPES = ("BOOLEAN",)
+    RETURN_NAMES = ("result",)
+    FUNCTION = "validate"
+    CATEGORY = "ProjectorzHelp"
+
+
+    def validate(self, image_type, operator, target_type):
+        # Note: 'target_type' might be a string from the combo selection
+        # Perform the comparison based on the operator
+        if operator == "is":
+            result = (image_type == target_type,)
+        elif operator == "is not":
+            result = (image_type != target_type,)
+        else:
+            result = (False,)  # Default fallback
+
+        return result
+
 class ControlNetModelSelectorNode:
     """
     Node to select the correct ControlNet model based on image type (NormalMap or DepthMap).
@@ -143,10 +183,12 @@ class ControlNetModelSelectorNode:
 
 NODE_CLASS_MAPPINGS = {
     "ImageTypeCheck": ImageCheckTypeNode,
+    "ValidateTypeNode" : ValidateTypeNode,
     "ControlNetModelSelector": ControlNetModelSelectorNode,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "ImageTypeCheck": "Image Type Check",
+    "ValidateTypeNode": "Validate Type",
     "ControlNetModelSelector": "Control Net Model Selector",
 }
