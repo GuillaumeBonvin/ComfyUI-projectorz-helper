@@ -32,12 +32,7 @@ class ValidateTypeNode:
 
     @classmethod
     def INPUT_TYPES(cls):
-        try:
-            options = [item.value for item in ImageType]
-        except Exception:
-            # Fallback if ImageType is not imported correctly
-            options = ["SolidColor", "Mask", "DepthMap", "NormalMap", "OpenPose", "RegularImage", "Unknown"]
-
+        options = [item.value for item in ImageType]
         return {
             "required": {
                 "image_type": ("STRING", {"multiline": False, "default": ""}),
@@ -181,14 +176,68 @@ class ControlNetModelSelectorNode:
         return (selected_model, selected_type)
 
 
+class SelectMatchingTypeNode:
+    """
+    Node to select the matching image from multiple inputs based on requested type.
+    Similar to ControlNetModelSelectorNode but for image routing.
+    """
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        options = [item.value for item in ImageType]
+        return {
+            "required": {
+                "image1": ("IMAGE", {}),
+                "image_type1": ("STRING", {}),
+                "image2": ("IMAGE", {}),
+                "image_type2": ("STRING", {}),
+                "image3": ("IMAGE", {}),
+                "image_type3": ("STRING", {}),
+                "target_type": (options, {"default": options[0] if options else "SolidColor"}),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("selected_image",)
+    FUNCTION = "select_matching"
+    CATEGORY = "ProjectorzHelp"
+
+    def select_matching(self, image1, image_type1, image2, image_type2, image3, image_type3, target_type):
+        """
+        Select the image that matches the target type.
+
+        Args:
+            image1, image2, image3: Three input images
+            type1, type2, type3: The detected types for each image
+            target_type: The type that needs selection (e.g., "depthMap", "normalMap")
+
+        Returns:
+            The matching image
+        """
+
+        # Priority: check if target matches with provided type info
+        if image_type1 and target_type and target_type == image_type1:
+            return image1.unsqueeze(0)
+
+        if image_type2 and target_type and target_type == image_type2:
+            return image2.unsqueeze(0)
+
+        if image_type3 and target_type and target_type == image_type3:
+            return image3.unsqueeze(0)
+
+        return image1.unsqueeze(0)
+
+
 NODE_CLASS_MAPPINGS = {
     "ImageTypeCheck": ImageCheckTypeNode,
     "ValidateTypeNode" : ValidateTypeNode,
     "ControlNetModelSelector": ControlNetModelSelectorNode,
+    "SelectMatchingType": SelectMatchingTypeNode,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "ImageTypeCheck": "Image Type Check",
     "ValidateTypeNode": "Validate Type",
     "ControlNetModelSelector": "Control Net Model Selector",
+    "SelectMatchingType": "Image Selector",
 }
