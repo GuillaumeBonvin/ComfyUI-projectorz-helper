@@ -197,8 +197,8 @@ class SelectMatchingTypeNode:
             },
         }
 
-    RETURN_TYPES = ("IMAGE",)
-    RETURN_NAMES = ("selected_image",)
+    RETURN_TYPES = ("IMAGE", "BOOLEAN", "STRING", )
+    RETURN_NAMES = ("selected_image", "any_match", "selected_type")
     FUNCTION = "select_matching"
     CATEGORY = "ProjectorzHelp"
 
@@ -214,19 +214,17 @@ class SelectMatchingTypeNode:
         Returns:
             The matching image
         """
-
         # Priority: check if target matches with provided type info
         if image_type1 and target_type and target_type == image_type1:
-            return image1.unsqueeze(0)
+            return (image1, True, image_type1, )
 
         if image_type2 and target_type and target_type == image_type2:
-            return image2.unsqueeze(0)
+            return (image2, True, image_type2, )
 
         if image_type3 and target_type and target_type == image_type3:
-            return image3.unsqueeze(0)
+            return (image3, True, image_type3, )
 
-        return image1.unsqueeze(0)
-
+        return (image1, False, target_type, )
 
 NODE_CLASS_MAPPINGS = {
     "ImageTypeCheck": ImageCheckTypeNode,
